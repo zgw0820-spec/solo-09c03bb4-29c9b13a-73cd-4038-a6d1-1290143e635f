@@ -1,0 +1,26 @@
+services:
+  rpki-guard:
+    build: .
+    image: rpki-cutover-guard:dev
+    container_name: rpki-cutover-guard
+    # One worker only: route/candidate state is in-process memory.
+    init: true
+    ports:
+      - "8000:8000"
+    environment:
+      RPKI_SEED_PATH: /app/data/active_table.json
+    volumes:
+      # Mount your validator-exported effective table here to replace the
+      # bundled seed without rebuilding the image.
+      - ./data:/app/data:ro
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=3).status == 200 else 1)"
+      interval: 10s
+      timeout: 4s
+      retries: 5
+      start_period: 5s
+    restart: unless-stopped

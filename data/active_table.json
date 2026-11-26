@@ -1,0 +1,21 @@
+{
+  "version": "2026-11-26-active-1",
+  "description": "预置生效表：旧 RPKI 验证器已核验的 IPv4 授权记录（演示数据，使用 RFC5737/2544 文档网段）",
+  "records": [
+    {
+      "prefix": "192.0.2.0/24",
+      "max_length": 25,
+      "origin_asn": 65001
+    },
+    {
+      "prefix": "198.51.100.0/24",
+      "max_length": 28,
+      "origin_asn": 65002
+    },
+    {
+      "prefix": "203.0.113.0/24",
+      "max_length": 24,
+      "origin_asn": 65003
+    }
+  ]
+}

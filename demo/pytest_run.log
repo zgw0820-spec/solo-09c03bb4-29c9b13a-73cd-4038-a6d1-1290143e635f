@@ -1,0 +1,33 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.2, pytest-9.2.0, pluggy-1.7.0 -- /workspace/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /workspace
+plugins: anyio-4.16.0
+collecting ... collected 18 items
+
+tests/test_service.py::test_health_and_seed_loaded PASSED                [  5%]
+tests/test_service.py::test_route_classification[192.0.2.0/24-65001-valid-None] PASSED [ 11%]
+tests/test_service.py::test_route_classification[192.0.2.128/25-65001-valid-None] PASSED [ 16%]
+tests/test_service.py::test_route_classification[192.0.2.192/26-65001-invalid-max_length_exceeded] PASSED [ 22%]
+tests/test_service.py::test_route_classification[192.0.2.0/24-65099-invalid-origin_as_unauthorized] PASSED [ 27%]
+tests/test_service.py::test_route_classification[198.18.0.0/16-65010-not_found-None] PASSED [ 33%]
+tests/test_service.py::test_asn_string_form_accepted PASSED              [ 38%]
+tests/test_service.py::test_routes_distinguished_by_prefix_and_asn PASSED [ 44%]
+tests/test_service.py::test_withdraw_without_asn_removes_all_origins_of_prefix PASSED [ 50%]
+tests/test_service.py::test_invalid_prefixes_rejected PASSED             [ 55%]
+tests/test_service.py::test_trial_reports_new_invalid_routes PASSED      [ 61%]
+tests/test_service.py::test_new_announcement_after_clean_trial_blocks_enable PASSED [ 66%]
+tests/test_service.py::test_changed_candidate_authorization_requires_retrial PASSED [ 72%]
+tests/test_service.py::test_active_table_changed_since_trial_requires_retrial PASSED [ 77%]
+tests/test_service.py::test_trial_blocker_can_disappear_after_withdrawal_without_retrial PASSED [ 83%]
+tests/test_service.py::test_enable_unknown_candidate_404 PASSED          [ 88%]
+tests/test_service.py::test_post_duplicate_candidate_id_conflicts PASSED [ 94%]
+tests/test_service.py::test_enable_without_trial_for_freshly_posted_candidate_uses_latest PASSED [100%]
+
+=============================== warnings summary ===============================
+.venv/lib/python3.11/site-packages/fastapi/testclient.py:1
+  /workspace/.venv/lib/python3.11/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+======================== 18 passed, 1 warning in 0.97s =========================

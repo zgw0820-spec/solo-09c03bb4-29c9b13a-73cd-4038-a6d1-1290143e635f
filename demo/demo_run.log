@@ -1,0 +1,835 @@
+
+======================================================================
+ 0. 健康检查与预置生效表
+======================================================================
+
+----------------------------------------------------------------------
+>>> GET /healthz
+<<< HTTP 200
+  {
+    "status": "ok",
+    "time": "2026-11-26T16:27:34.124518+00:00",
+    "active_version": "2026-11-26-active-1",
+    "active_fingerprint": "sha256:0c53551b3ff4b795",
+    "announced_routes": 0,
+    "invalid_routes_under_active_table": 0,
+    "candidates": 0
+  }
+
+----------------------------------------------------------------------
+>>> GET /api/active/authorizations
+<<< HTTP 200
+  {
+    "version": "2026-11-26-active-1",
+    "description": "预置生效表：旧 RPKI 验证器已核验的 IPv4 授权记录（演示数据，使用 RFC5737/2544 文档网段）",
+    "fingerprint": "sha256:0c53551b3ff4b795",
+    "record_count": 3,
+    "activated_at": "2026-11-26T16:27:31.244205+00:00",
+    "records": [
+      {
+        "prefix": "192.0.2.0/24",
+        "max_length": 25,
+        "origin_asn": 65001
+      },
+      {
+        "prefix": "198.51.100.0/24",
+        "max_length": 28,
+        "origin_asn": 65002
+      },
+      {
+        "prefix": "203.0.113.0/24",
+        "max_length": 24,
+        "origin_asn": 65003
+      }
+    ]
+  }
+
+======================================================================
+ 1. 采集器推送基线 BGP 通告（回执按 active-1 判定）
+======================================================================
+
+----------------------------------------------------------------------
+>>> POST /api/bgp/announcements
+    request body:
+      {
+        "prefix": "192.0.2.0/24",
+        "origin_asn": 65001,
+        "collector": "collector-a",
+        "peer": "198.51.100.1"
+      }
+<<< HTTP 200
+  {
+    "accepted": true,
+    "received_at": "2026-11-26T16:27:34.268100+00:00",
+    "active_version": "2026-11-26-active-1",
+    "active_fingerprint": "sha256:0c53551b3ff4b795",
+    "route": {
+      "prefix": "192.0.2.0/24",
+      "origin_asn": 65001,
+      "first_seen_at": "2026-11-26T16:27:34.268100+00:00",
+      "last_seen_at": "2026-11-26T16:27:34.268100+00:00",
+      "announcement_count": 1,
+      "last_collector": "collector-a",
+      "last_peer": "198.51.100.1"
+    },
+    "validation": {
+      "state": "valid",
+      "reason": null,
+      "covering": [
+        {
+          "prefix": "192.0.2.0/24",
+          "max_length": 25,
+          "origin_asn": 65001,
+          "asn_match": true,
+          "length_ok": true
+        }
+      ]
+    }
+  }
+
+----------------------------------------------------------------------
+>>> POST /api/bgp/announcements
+    request body:
+      {
+        "prefix": "192.0.2.128/25",
+        "origin_asn": 65001,
+        "collector": "collector-a"
+      }
+<<< HTTP 200
+  {
+    "accepted": true,
+    "received_at": "2026-11-26T16:27:34.341042+00:00",
+    "active_version": "2026-11-26-active-1",
+    "active_fingerprint": "sha256:0c53551b3ff4b795",
+    "route": {
+      "prefix": "192.0.2.128/25",
+      "origin_asn": 65001,
+      "first_seen_at": "2026-11-26T16:27:34.341042+00:00",
+      "last_seen_at": "2026-11-26T16:27:34.341042+00:00",
+      "announcement_count": 1,
+      "last_collector": "collector-a",
+      "last_peer": null
+    },
+    "validation": {
+      "state": "valid",
+      "reason": null,
+      "covering": [
+        {
+          "prefix": "192.0.2.0/24",
+          "max_length": 25,
+          "origin_asn": 65001,
+          "asn_match": true,
+          "length_ok": true
+        }
+      ]
+    }
+  }
+
+----------------------------------------------------------------------
+>>> POST /api/bgp/announcements
+    request body:
+      {
+        "prefix": "198.51.100.128/25",
+        "origin_asn": 65002,
+        "collector": "collector-b"
+      }
+<<< HTTP 200
+  {
+    "accepted": true,
+    "received_at": "2026-11-26T16:27:34.418088+00:00",
+    "active_version": "2026-11-26-active-1",
+    "active_fingerprint": "sha256:0c53551b3ff4b795",
+    "route": {
+      "prefix": "198.51.100.128/25",
+      "origin_asn": 65002,
+      "first_seen_at": "2026-11-26T16:27:34.418088+00:00",
+      "last_seen_at": "2026-11-26T16:27:34.418088+00:00",
+      "announcement_count": 1,
+      "last_collector": "collector-b",
+      "last_peer": null
+    },
+    "validation": {
+      "state": "valid",
+      "reason": null,
+      "covering": [
+        {
+          "prefix": "198.51.100.0/24",
+          "max_length": 28,
+          "origin_asn": 65002,
+          "asn_match": true,
+          "length_ok": true
+        }
+      ]
+    }
+  }
+
+----------------------------------------------------------------------
+>>> POST /api/bgp/announcements
+    request body:
+      {
+        "prefix": "203.0.113.0/24",
+        "origin_asn": 65003
+      }
+<<< HTTP 200
+  {
+    "accepted": true,
+    "received_at": "2026-11-26T16:27:34.493963+00:00",
+    "active_version": "2026-11-26-active-1",
+    "active_fingerprint": "sha256:0c53551b3ff4b795",
+    "route": {
+      "prefix": "203.0.113.0/24",
+      "origin_asn": 65003,
+      "first_seen_at": "2026-11-26T16:27:34.493963+00:00",
+      "last_seen_at": "2026-11-26T16:27:34.493963+00:00",
+      "announcement_count": 1,
+      "last_collector": null,
+      "last_peer": null
+    },
+    "validation": {
+      "state": "valid",
+      "reason": null,
+      "covering": [
+        {
+          "prefix": "203.0.113.0/24",
+          "max_length": 24,
+          "origin_asn": 65003,
+          "asn_match": true,
+          "length_ok": true
+        }
+      ]
+    }
+  }
+
+----------------------------------------------------------------------
+>>> POST /api/bgp/announcements
+    request body:
+      {
+        "prefix": "198.18.0.0/16",
+        "origin_asn": 65010
+      }
+<<< HTTP 200
+  {
+    "accepted": true,
+    "received_at": "2026-11-26T16:27:34.570884+00:00",
+    "active_version": "2026-11-26-active-1",
+    "active_fingerprint": "sha256:0c53551b3ff4b795",
+    "route": {
+      "prefix": "198.18.0.0/16",
+      "origin_asn": 65010,
+      "first_seen_at": "2026-11-26T16:27:34.570884+00:00",
+      "last_seen_at": "2026-11-26T16:27:34.570884+00:00",
+      "announcement_count": 1,
+      "last_collector": null,
+      "last_peer": null
+    },
+    "validation": {
+      "state": "not_found",
+      "reason": null,
+      "covering": []
+    }
+  }
+
+======================================================================
+ 2. 提交候选 cutover 的 rc1 整表并试算
+======================================================================
+
+----------------------------------------------------------------------
+>>> PUT /api/candidates/cutover
+    request body:
+      {
+        "version": "2026-11-26-v2-rc1",
+        "description": "新验证器导出的候选表（草案：198.18/16 maxLength=16）",
+        "records": [
+          {
+            "prefix": "192.0.2.0/24",
+            "max_length": 25,
+            "origin_asn": 65001
+          },
+          {
+            "prefix": "198.51.100.0/24",
+            "max_length": 28,
+            "origin_asn": 65002
+          },
+          {
+            "prefix": "203.0.113.0/24",
+            "max_length": 24,
+            "origin_asn": 65003
+          },
+          {
+            "prefix": "198.18.0.0/16",
+            "max_length": 16,
+            "origin_asn": 65010
+          }
+        ]
+      }
+<<< HTTP 200
+  {
+    "candidate_id": "cutover",
+    "candidate": {
+      "candidate_id": "cutover",
+      "version": "2026-11-26-v2-rc1",
+      "description": "新验证器导出的候选表（草案：198.18/16 maxLength=16）",
+      "fingerprint": "sha256:dbd27df3c440d1bb",
+      "record_count": 4,
+      "created_at": "2026-11-26T16:27:34.655078+00:00",
+      "updated_at": "2026-11-26T16:27:34.655078+00:00",
+      "latest_trial_id": "trial-ee49c4ff2b37",
+      "enabled_at": null
+    },
+    "trial": {
+      "trial_id": "trial-ee49c4ff2b37",
+      "candidate_id": "cutover",
+      "created_at": "2026-11-26T16:27:34.655406+00:00",
+      "authorization_version": "2026-11-26-v2-rc1",
+      "authorization_fingerprint": "sha256:dbd27df3c440d1bb",
+      "active_version_at_trial": "2026-11-26-active-1",
+      "active_fingerprint_at_trial": "sha256:0c53551b3ff4b795",
+      "routes_evaluated": 5,
+      "new_invalid_count": 0,
+      "new_invalid": [],
+      "summary": {
+        "active": {
+          "valid": 4,
+          "invalid": 0,
+          "not_found": 1
+        },
+        "candidate": {
+          "valid": 5,
+          "invalid": 0,
+          "not_found": 0
+        }
+      }
+    }
+  }
+    [captured] TRIAL_RC1=trial-ee49c4ff2b37
+
+======================================================================
+ 3. 同一候选更新为 rc2 整表（maxLength 调整为 24），自动试算：无新增 Invalid
+======================================================================
+
+----------------------------------------------------------------------
+>>> PUT /api/candidates/cutover
+    request body:
+      {
+        "version": "2026-11-26-v2",
+        "description": "新验证器导出的候选表（终稿：198.18/16 maxLength=24）",
+        "records": [
+          {
+            "prefix": "192.0.2.0/24",
+            "max_length": 25,
+            "origin_asn": 65001
+          },
+          {
+            "prefix": "198.51.100.0/24",
+            "max_length": 28,
+            "origin_asn": 65002
+          },
+          {
+            "prefix": "203.0.113.0/24",
+            "max_length": 24,
+            "origin_asn": 65003
+          },
+          {
+            "prefix": "198.18.0.0/16",
+            "max_length": 24,
+            "origin_asn": 65010
+          }
+        ]
+      }
+<<< HTTP 200
+  {
+    "candidate_id": "cutover",
+    "candidate": {
+      "candidate_id": "cutover",
+      "version": "2026-11-26-v2",
+      "description": "新验证器导出的候选表（终稿：198.18/16 maxLength=24）",
+      "fingerprint": "sha256:7c766f8898d09791",
+      "record_count": 4,
+      "created_at": "2026-11-26T16:27:34.655078+00:00",
+      "updated_at": "2026-11-26T16:27:34.787454+00:00",
+      "latest_trial_id": "trial-696b056aa2f5",
+      "enabled_at": null
+    },
+    "trial": {
+      "trial_id": "trial-696b056aa2f5",
+      "candidate_id": "cutover",
+      "created_at": "2026-11-26T16:27:34.788361+00:00",
+      "authorization_version": "2026-11-26-v2",
+      "authorization_fingerprint": "sha256:7c766f8898d09791",
+      "active_version_at_trial": "2026-11-26-active-1",
+      "active_fingerprint_at_trial": "sha256:0c53551b3ff4b795",
+      "routes_evaluated": 5,
+      "new_invalid_count": 0,
+      "new_invalid": [],
+      "summary": {
+        "active": {
+          "valid": 4,
+          "invalid": 0,
+          "not_found": 1
+        },
+        "candidate": {
+          "valid": 5,
+          "invalid": 0,
+          "not_found": 0
+        }
+      }
+    }
+  }
+    [captured] TRIAL_RC2=trial-696b056aa2f5
+    trial.new_invalid_count = 0
+
+======================================================================
+ 4. 用 rc1 的旧试算令牌启用 —— 授权版已变，预期 409 RETRIAL_REQUIRED
+======================================================================
+
+----------------------------------------------------------------------
+>>> POST /api/candidates/cutover/enable
+    request body:
+      {
+        "trial_id": "trial-ee49c4ff2b37"
+      }
+<<< HTTP 409
+  {
+    "detail": {
+      "code": "RETRIAL_REQUIRED",
+      "message": "试算所用授权表已变更（version/records），请重新试算后再启用",
+      "candidate_id": "cutover",
+      "trial_id": "trial-ee49c4ff2b37",
+      "reason": "candidate_authorization_changed",
+      "changed_fields": [
+        "version",
+        "records"
+      ],
+      "trial_authorization_version": "2026-11-26-v2-rc1",
+      "current_authorization_version": "2026-11-26-v2",
+      "trial_authorization_fingerprint": "sha256:dbd27df3c440d1bb",
+      "current_authorization_fingerprint": "sha256:7c766f8898d09791"
+    }
+  }
+
+======================================================================
+ 5. 授权版未再变化，显式重做试算，取得新令牌
+======================================================================
+
+----------------------------------------------------------------------
+>>> POST /api/candidates/cutover/trial
+<<< HTTP 200
+  {
+    "trial_id": "trial-c3916733e644",
+    "candidate_id": "cutover",
+    "created_at": "2026-11-26T16:27:35.034466+00:00",
+    "authorization_version": "2026-11-26-v2",
+    "authorization_fingerprint": "sha256:7c766f8898d09791",
+    "active_version_at_trial": "2026-11-26-active-1",
+    "active_fingerprint_at_trial": "sha256:0c53551b3ff4b795",
+    "routes_evaluated": 5,
+    "new_invalid_count": 0,
+    "new_invalid": [],
+    "summary": {
+      "active": {
+        "valid": 4,
+        "invalid": 0,
+        "not_found": 1
+      },
+      "candidate": {
+        "valid": 5,
+        "invalid": 0,
+        "not_found": 0
+      }
+    }
+  }
+    [captured] TRIAL_FRESH=trial-c3916733e644
+
+======================================================================
+ 6. 试算后新到两条通告：旧生效表无覆盖 -> 回执均为 not_found（照常放行）
+======================================================================
+
+----------------------------------------------------------------------
+>>> POST /api/bgp/announcements
+    request body:
+      {
+        "prefix": "198.18.1.0/24",
+        "origin_asn": "AS65099",
+        "collector": "collector-c",
+        "peer": "198.51.100.9"
+      }
+<<< HTTP 200
+  {
+    "accepted": true,
+    "received_at": "2026-11-26T16:27:35.172257+00:00",
+    "active_version": "2026-11-26-active-1",
+    "active_fingerprint": "sha256:0c53551b3ff4b795",
+    "route": {
+      "prefix": "198.18.1.0/24",
+      "origin_asn": 65099,
+      "first_seen_at": "2026-11-26T16:27:35.172257+00:00",
+      "last_seen_at": "2026-11-26T16:27:35.172257+00:00",
+      "announcement_count": 1,
+      "last_collector": "collector-c",
+      "last_peer": "198.51.100.9"
+    },
+    "validation": {
+      "state": "not_found",
+      "reason": null,
+      "covering": []
+    }
+  }
+
+----------------------------------------------------------------------
+>>> POST /api/bgp/announcements
+    request body:
+      {
+        "prefix": "198.18.0.0/25",
+        "origin_asn": 65010,
+        "collector": "collector-c"
+      }
+<<< HTTP 200
+  {
+    "accepted": true,
+    "received_at": "2026-11-26T16:27:35.262325+00:00",
+    "active_version": "2026-11-26-active-1",
+    "active_fingerprint": "sha256:0c53551b3ff4b795",
+    "route": {
+      "prefix": "198.18.0.0/25",
+      "origin_asn": 65010,
+      "first_seen_at": "2026-11-26T16:27:35.262325+00:00",
+      "last_seen_at": "2026-11-26T16:27:35.262325+00:00",
+      "announcement_count": 1,
+      "last_collector": "collector-c",
+      "last_peer": null
+    },
+    "validation": {
+      "state": "not_found",
+      "reason": null,
+      "covering": []
+    }
+  }
+
+======================================================================
+ 7. 授权版未变，用新令牌启用 —— 按启用时仍在播路由重核，预期 409 ENABLE_BLOCKED
+======================================================================
+
+----------------------------------------------------------------------
+>>> POST /api/candidates/cutover/enable
+    request body:
+      {
+        "trial_id": "trial-c3916733e644"
+      }
+<<< HTTP 409
+  {
+    "detail": {
+      "code": "ENABLE_BLOCKED",
+      "message": "启用重核发现 2 条将新增为 Invalid 的在播路由，已保留原生效表；请撤回相关路由或修订候选表",
+      "candidate_id": "cutover",
+      "trial_id": "trial-c3916733e644",
+      "active_version": "2026-11-26-active-1",
+      "active_fingerprint": "sha256:0c53551b3ff4b795",
+      "recheck": {
+        "checked_at": "2026-11-26T16:27:35.367837+00:00",
+        "routes_checked": 7,
+        "new_invalid_count": 2
+      },
+      "blockers": [
+        {
+          "prefix": "198.18.0.0/25",
+          "origin_asn": 65010,
+          "active_state": "not_found",
+          "candidate_state": "invalid",
+          "candidate_reason": "max_length_exceeded",
+          "covering": [
+            {
+              "prefix": "198.18.0.0/16",
+              "max_length": 24,
+              "origin_asn": 65010,
+              "asn_match": true,
+              "length_ok": false
+            }
+          ],
+          "first_seen_at": "2026-11-26T16:27:35.262325+00:00",
+          "last_seen_at": "2026-11-26T16:27:35.262325+00:00",
+          "collector": "collector-c"
+        },
+        {
+          "prefix": "198.18.1.0/24",
+          "origin_asn": 65099,
+          "active_state": "not_found",
+          "candidate_state": "invalid",
+          "candidate_reason": "origin_as_unauthorized",
+          "covering": [
+            {
+              "prefix": "198.18.0.0/16",
+              "max_length": 24,
+              "origin_asn": 65010,
+              "asn_match": false,
+              "length_ok": true
+            }
+          ],
+          "first_seen_at": "2026-11-26T16:27:35.172257+00:00",
+          "last_seen_at": "2026-11-26T16:27:35.172257+00:00",
+          "collector": "collector-c"
+        }
+      ]
+    }
+  }
+
+======================================================================
+ 8. 阻断后核对：生效表仍是旧版 active-1；这两条路由在现表下仍非 invalid
+======================================================================
+
+----------------------------------------------------------------------
+>>> GET /healthz
+<<< HTTP 200
+  {
+    "status": "ok",
+    "time": "2026-11-26T16:27:35.426630+00:00",
+    "active_version": "2026-11-26-active-1",
+    "active_fingerprint": "sha256:0c53551b3ff4b795",
+    "announced_routes": 7,
+    "invalid_routes_under_active_table": 0,
+    "candidates": 1
+  }
+
+----------------------------------------------------------------------
+>>> GET /api/routes?state=not_found
+<<< HTTP 200
+  {
+    "count": 3,
+    "state_filter": "not_found",
+    "routes": [
+      {
+        "prefix": "198.18.0.0/16",
+        "origin_asn": 65010,
+        "first_seen_at": "2026-11-26T16:27:34.570884+00:00",
+        "last_seen_at": "2026-11-26T16:27:34.570884+00:00",
+        "announcement_count": 1,
+        "last_collector": null,
+        "last_peer": null,
+        "validation": {
+          "state": "not_found",
+          "reason": null,
+          "covering": []
+        }
+      },
+      {
+        "prefix": "198.18.0.0/25",
+        "origin_asn": 65010,
+        "first_seen_at": "2026-11-26T16:27:35.262325+00:00",
+        "last_seen_at": "2026-11-26T16:27:35.262325+00:00",
+        "announcement_count": 1,
+        "last_collector": "collector-c",
+        "last_peer": null,
+        "validation": {
+          "state": "not_found",
+          "reason": null,
+          "covering": []
+        }
+      },
+      {
+        "prefix": "198.18.1.0/24",
+        "origin_asn": 65099,
+        "first_seen_at": "2026-11-26T16:27:35.172257+00:00",
+        "last_seen_at": "2026-11-26T16:27:35.172257+00:00",
+        "announcement_count": 1,
+        "last_collector": "collector-c",
+        "last_peer": "198.51.100.9",
+        "validation": {
+          "state": "not_found",
+          "reason": null,
+          "covering": []
+        }
+      }
+    ]
+  }
+
+======================================================================
+ 9. 采集器撤回两条阻断路由
+======================================================================
+
+----------------------------------------------------------------------
+>>> POST /api/bgp/withdrawals
+    request body:
+      {
+        "prefix": "198.18.1.0/24",
+        "origin_asn": 65099,
+        "collector": "collector-c"
+      }
+<<< HTTP 200
+  {
+    "prefix": "198.18.1.0/24",
+    "origin_asn": 65099,
+    "removed_count": 1,
+    "removed": [
+      {
+        "prefix": "198.18.1.0/24",
+        "origin_asn": 65099,
+        "first_seen_at": "2026-11-26T16:27:35.172257+00:00",
+        "last_seen_at": "2026-11-26T16:27:35.172257+00:00",
+        "announcement_count": 1,
+        "last_collector": "collector-c",
+        "last_peer": "198.51.100.9",
+        "last_validation_under_active_table": {
+          "state": "not_found",
+          "reason": null,
+          "covering": []
+        },
+        "withdrawn_by_collector": "collector-c"
+      }
+    ],
+    "active_version": "2026-11-26-active-1",
+    "processed_at": "2026-11-26T16:27:35.583354+00:00"
+  }
+
+----------------------------------------------------------------------
+>>> POST /api/bgp/withdrawals
+    request body:
+      {
+        "prefix": "198.18.0.0/25",
+        "origin_asn": 65010
+      }
+<<< HTTP 200
+  {
+    "prefix": "198.18.0.0/25",
+    "origin_asn": 65010,
+    "removed_count": 1,
+    "removed": [
+      {
+        "prefix": "198.18.0.0/25",
+        "origin_asn": 65010,
+        "first_seen_at": "2026-11-26T16:27:35.262325+00:00",
+        "last_seen_at": "2026-11-26T16:27:35.262325+00:00",
+        "announcement_count": 1,
+        "last_collector": "collector-c",
+        "last_peer": null,
+        "last_validation_under_active_table": {
+          "state": "not_found",
+          "reason": null,
+          "covering": []
+        }
+      }
+    ],
+    "active_version": "2026-11-26-active-1",
+    "processed_at": "2026-11-26T16:27:35.662692+00:00"
+  }
+
+======================================================================
+ 10. 同一试算令牌再次启用：重核无新增 Invalid，预期 200 并切到 v2
+======================================================================
+
+----------------------------------------------------------------------
+>>> POST /api/candidates/cutover/enable
+    request body:
+      {
+        "trial_id": "trial-c3916733e644"
+      }
+<<< HTTP 200
+  {
+    "enabled": true,
+    "already_active": false,
+    "candidate_id": "cutover",
+    "trial_id": "trial-c3916733e644",
+    "previous_active_version": "2026-11-26-active-1",
+    "active_version": "2026-11-26-v2",
+    "active_fingerprint": "sha256:7c766f8898d09791",
+    "activated_at": "2026-11-26T16:27:35.758457+00:00",
+    "recheck": {
+      "checked_at": "2026-11-26T16:27:35.758443+00:00",
+      "routes_checked": 5,
+      "new_invalid_count": 0
+    }
+  }
+
+======================================================================
+ 11. 切表后该越权 ASN 路由再次通告 —— 回执现在按 v2 判 invalid
+======================================================================
+
+----------------------------------------------------------------------
+>>> POST /api/bgp/announcements
+    request body:
+      {
+        "prefix": "198.18.1.0/24",
+        "origin_asn": 65099,
+        "collector": "collector-c"
+      }
+<<< HTTP 200
+  {
+    "accepted": true,
+    "received_at": "2026-11-26T16:27:35.854789+00:00",
+    "active_version": "2026-11-26-v2",
+    "active_fingerprint": "sha256:7c766f8898d09791",
+    "route": {
+      "prefix": "198.18.1.0/24",
+      "origin_asn": 65099,
+      "first_seen_at": "2026-11-26T16:27:35.854789+00:00",
+      "last_seen_at": "2026-11-26T16:27:35.854789+00:00",
+      "announcement_count": 1,
+      "last_collector": "collector-c",
+      "last_peer": null
+    },
+    "validation": {
+      "state": "invalid",
+      "reason": "origin_as_unauthorized",
+      "covering": [
+        {
+          "prefix": "198.18.0.0/16",
+          "max_length": 24,
+          "origin_asn": 65010,
+          "asn_match": false,
+          "length_ok": true
+        }
+      ]
+    }
+  }
+
+======================================================================
+ 12. 收尾状态
+======================================================================
+
+----------------------------------------------------------------------
+>>> GET /healthz
+<<< HTTP 200
+  {
+    "status": "ok",
+    "time": "2026-11-26T16:27:35.901103+00:00",
+    "active_version": "2026-11-26-v2",
+    "active_fingerprint": "sha256:7c766f8898d09791",
+    "announced_routes": 6,
+    "invalid_routes_under_active_table": 1,
+    "candidates": 1
+  }
+
+----------------------------------------------------------------------
+>>> GET /api/active/authorizations
+<<< HTTP 200
+  {
+    "version": "2026-11-26-v2",
+    "description": "新验证器导出的候选表（终稿：198.18/16 maxLength=24）",
+    "fingerprint": "sha256:7c766f8898d09791",
+    "record_count": 4,
+    "activated_at": "2026-11-26T16:27:35.758457+00:00",
+    "records": [
+      {
+        "prefix": "192.0.2.0/24",
+        "max_length": 25,
+        "origin_asn": 65001
+      },
+      {
+        "prefix": "198.51.100.0/24",
+        "max_length": 28,
+        "origin_asn": 65002
+      },
+      {
+        "prefix": "203.0.113.0/24",
+        "max_length": 24,
+        "origin_asn": 65003
+      },
+      {
+        "prefix": "198.18.0.0/16",
+        "max_length": 24,
+        "origin_asn": 65010
+      }
+    ]
+  }
+
+======================================================================
+ 演示完成。Swagger UI: http://127.0.0.1:8000/docs
+======================================================================
