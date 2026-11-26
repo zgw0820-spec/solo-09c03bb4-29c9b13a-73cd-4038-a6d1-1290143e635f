@@ -165,10 +165,151 @@ bash scripts/demo_requests.sh
    `/api/bgp/withdrawals` 的 `origin_asn` 设计为可选——省略时撤回该前缀下
    所有起源 ASN；若采集器能稳定提供被撤回路由的起源 ASN，建议始终带 ASN
    精确撤回，避免误删同前缀其他起源。
-7. **无 RTR/VRP 增量同步**：不会主动连 rpki-rtr 缓存或验证器拉增量，
-   授权更新靠“提交候选整表 → 试算 → 启用”，或替换挂载种子后重启。
+7. **RTR 只做整表、不做增量 delta，也不向上游同步**：本次已新增面向边界
+   路由器的 RFC 8210 RTR v1 TCP 接口（Reset 整表 / 精确 Serial 空更新 /
+   否则 Cache Reset / Serial Notify，见第四节），但按需求**不做增量 PDU**；
+   服务本身仍不会主动连 rpki-rtr 缓存或验证器拉数据，授权更新靠
+   “提交候选整表 → 试算 → 启用”，或替换挂载种子后重启。
 8. **可观测性较轻**：只有 `/healthz` 与结构化 JSON 日志（uvicorn），
    未接 Prometheus 指标/OpenTelemetry；试算历史只保留在内存中的候选对象内。
 9. **演示地址为文档网段**：种子与剧本使用 192.0.2.0/24、198.51.100.0/24、
    203.0.113.0/24、198.18.0.0/16 等保留网段和 AS650xx 示例 ASN；
    接生产前需把 `data/active_table.json` 换成验证器实际导出。
+
+---
+
+# 四、追加交付：RFC 8210 RTR v1 TCP 取表接口（2026-11-26）
+
+在原守门服务上，让边界路由器能通过标准 RTR 协议**直接读取已启用的 IPv4
+起源授权**。代码、测试、演示均在本工作区真实跑过。
+
+## 4.1 需求对照
+
+| 需求 | 实现 |
+| --- | --- |
+| RFC 8210 **v1** RTR TCP 接口 | `app/rtr.py`：v1 PDU 编解码 + 线程版 TCP Server；随 FastAPI lifespan 启停，默认 `0.0.0.0:8282`（`RTR_ENABLED/RTR_HOST/RTR_PORT` 可调）；Compose 映射 `8282:8282`，Dockerfile `EXPOSE 8000 8282` |
+| Reset Query 返回完整生效表（IPv4 Prefix） | `RTRConnection`：`Cache Response`(3) → 每条授权一个 20 字节 `IPv4 Prefix`(4，flags=0x01 通告) → v1 `End of Data`(7，length=12，带 serial)。记录去重并按前缀/长度/ASN 稳定排序 |
+| Serial Query 会话号+序列号都匹配 → 空更新 | 单一 `Cache Response` + `End of Data`，中间 0 条 Prefix PDU |
+| 否则 Cache Reset | session id 或 serial 任一与当前不一致（含落后 serial）→ 单个 8 字节 `Cache Reset`(8) |
+| 本次不做增量 | 不保存/计算 delta；任何非精确匹配一律 Cache Reset，由路由器 Reset 整表重取 |
+| 一次响应使用同一份表+同一序列号 | `store.rtr_snapshot()` 在锁内取不可变 `RtrSnapshot(session, serial, entries)`，整段响应只遍历该快照；发送期间不持锁 |
+| 仅“启用使授权记录集合改变”才推进 serial + Serial Notify | 以整表指纹判定：`enable_candidate` 中 `records_changed = candidate.fingerprint != previous_fingerprint`，仅此时 `rtr_serial=(serial+1) mod 2^32`。纯换版本标签、重复启用、加入完全重复记录均不推进、不通知 |
+| 传输中换表：发完本次响应再通知，只报最新 serial | 连接线程只在循环顶部/响应结束后的空闲点 `maybe_send_notify()`；比较当前 serial 与本响应快照 serial，**一次** Notify 携带当前最新值，连续多版合并 |
+| 慢连接不拖住启用/其他路由器 | 每连接独立守护线程；启用路径完全不碰 socket、不持锁发送；慢 `sendall` 只阻塞该连接。有 6000 条记录 + 4KB 收发缓冲的真实 loopback 测试：慢连接卡住期间两次启用合计 `<2s`，另一连接完整取到新表，慢连接排空后仍收到旧整表 + EoD(serial=0) + **唯一一个** serial=2 的 Notify |
+| Docker Compose 启动 | 更新 `docker-compose.yml`（8282 端口 + RTR 环境变量）与 `Dockerfile`；YAML 已解析校验。**但本机仍无 docker daemon，镜像构建/`compose up` 未实跑**（见 4.5） |
+| 附本地 RTR 客户端 + 启用 API 请求，演示换版后重新取表 | `scripts/rtr_client.py`（纯标准库，`reset/serial/watch`，支持 `--json`、`--refetch`）与 `scripts/demo_rtr.sh`（curl 启用 + 客户端取表，含断言）；真实输出存 `demo/rtr_demo_run.log` |
+| 交付前核对 + 自测 + 说明 | 28 个测试全绿、`compileall`、`git diff --check`、字节级报文核对、真实 uvicorn 多轮演示（见 4.3） |
+
+## 4.2 改动/新增文件
+
+```
+app/rtr.py            # 新增：RFC8210 v1 编解码、PduReader、RTRConnection、RTRServer
+app/store.py          # 改：rtr_session_id/rtr_serial/active_rtr_entries、
+                      #     rtr_state()/rtr_snapshot()、启用时按指纹推进 serial、
+                      #     health/active_table/enable 响应增加 rtr 信息
+app/main.py           # 改：lifespan 启停 RTRServer；根路径自描述增加 rtr_tcp
+scripts/rtr_client.py # 新增：本地标准库 RTR 客户端（reset/serial/watch --refetch）
+scripts/demo_rtr.sh   # 新增：RTR 全流程断言式演示（可重复执行）
+tests/test_rtr.py     # 新增：10 个 RTR 测试（含真实 socket 慢连接隔离）
+docker-compose.yml    # 改：映射 8282、加 RTR_* 环境变量
+Dockerfile            # 改：EXPOSE 8000 8282
+README.md             # 改：新增第 6 节 RTR 说明、更新并发/目录/测试数
+demo/rtr_demo_run.log  # 新增：一次全新实例的 RTR 演示完整输出
+demo/pytest_run.log   # 更新：28 passed
+demo/demo_run.log     # 重新生成：原 HTTP 演示仍为 20×200 + 2×预期 409
+```
+
+未新增第三方依赖（RTR 用标准库 `socket/struct/threading`，客户端同理），
+`requirements*.txt` 不变。
+
+## 4.3 实际验过什么（本工作区真实执行）
+
+环境沿用系统 Python 3.11.2，用 `/tmp/getpip-bootstrap/get-pip.py`
+（`python -I` 引导）在 `/workspace/.venv` 装了
+`requirements-dev.txt`（fastapi 0.165.0 / uvicorn 0.54.0 / pydantic 2.14.4 /
+httpx 0.29.0 / pytest 9.2.0）。
+
+1. **自动化测试：28 passed**（原 18 + 新 10），日志 `demo/pytest_run.log`。
+   新增 RTR 覆盖：
+   - Reset 返回 CacheResponse + 3 个 IPv4 Prefix + length=12/serial=0 的 EoD，
+     并逐字段核对（含 `192.0.2.0/24,maxLength25,AS65001,flags=1`、length=20）；
+   - session+serial 精确匹配 → 仅 CacheResponse+EoD 的空更新；
+   - serial 不符 / session 不符 → Cache Reset；
+   - 空闲连接在内容性启用后收到 Serial Notify(session, serial=1)；
+   - 经 **HTTP** `PUT candidate → enable` 也推进 serial 并产生 Notify；
+   - 仅换版本标签 / 加完全重复记录 → serial 不动、0.8s 内无 Notify；
+   - **确定性假 socket 测试**：在第 2 个 Prefix 发送钩子里连续启用两版，
+     整段响应仍是旧快照/EoD serial=0，空闲点恰好补一个 serial=2 的 Notify，
+     再轮询不重复发送；
+   - **真实 TCP 慢连接测试**：6000 条记录、`SO_SNDBUF/SO_RCVBUF=4096`，
+     客户端读 28 字节后停读 0.5s 确保服务端阻塞在发送中；此时两次启用
+     合计耗时 `<2s`，另一个连接完整取到 serial=2 的 6002 条；慢连接排空后
+     得到旧版 6000 条与 EoD serial=0，随后只有一个 serial=2 Notify，
+     0.8s 内无第二个 PDU。
+   - 该套件连续单独跑 3 次、全量套件连跑多次均稳定通过（慢测试无 flake）。
+2. **真实进程演示**：用 `.venv/bin/uvicorn app.main:app` 实起服务，
+   `bash scripts/demo_rtr.sh` 全部断言通过，日志 `demo/rtr_demo_run.log`：
+   实测 session=52431、serial `0→1→2`，旧 serial 轮询与错 session 均
+   `cache_reset`（客户端退出码 3），Reset 重取 Prefix 数 `3→4→5` 且新前缀
+   在表，watch 连接收到
+   `Serial Notify ... newest serial=2` 并自动重取到 `198.19.2.0/24`。
+   同一实例**连跑两次**该剧本也通过（第二次正确地从 serial=2 走到 3→4，
+   证明可重复、前缀选取会避开已用项）。
+3. **原 HTTP 演示无回归**：全新实例重跑 `scripts/demo_requests.sh`，
+   仍为 **20 个 HTTP 200 + 2 个预期 409**，无 5xx；启用响应新增的 `rtr`
+   块可见且切到 v2 时 `serial_advanced=true`（日志已刷新）。
+4. **报文级核对**：打印实际十六进制，与 RFC 8210 布局逐字节一致，例如
+   IPv4 Prefix：
+   `01 04 0000 00000014 01 18 19 00 c0000200 0000fde9`
+   （v1/type4/len20/flags=通告/plen24/maxlen25/192.0.2.0/AS65001）；
+   EoD/Notify 为 `01 07|00 sid 0000000c serial`。
+5. **部署等价核对**：不带额外环境变量、按 Dockerfile 的 CMD
+   （`uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 1`）实跑，
+   `/healthz` 含 rtr 字段，对 `127.0.0.1:8282` 的真实 Reset 成功；
+   `docker-compose.yml` 用 PyYAML 解析通过，端口/环境变量/healthcheck
+   字段正确。`python -m compileall app tests scripts/rtr_client.py` 通过，
+   `git diff --check` 无空白问题。
+
+## 4.4 设计要点（为什么慢连接/一致性成立）
+
+- 状态只有一份（进程内 `store` 单例），RTR 不另存表：启用在 store 锁内
+  同时替换 `active_records / active_fingerprint / active_rtr_entries /
+  rtr_serial`，因此不存在“表内容与 serial 错位”。
+- `rtr_snapshot()` 返回的 entries 是创建后不再修改、换版只整体替换的
+  tuple；连接线程拿到后即可释放锁慢慢发。
+- 启用线程只改内存，不遍历 RTR 连接、不写 socket，所以再慢的路由器也
+  不会反压启用；通知不是启用时逐连接推送，而是各连接线程在安全点自行
+  比对当前 serial，天然合并多次变化、且绝不会插在一个响应的 PDU 序列中间。
+- accept 单线程 + 每连接守护线程；断线只在该线程内收尾，并会清理已结束
+  的线程对象。
+
+## 4.5 本轮仍未做 / 风险
+
+1. **Docker 镜像构建与 `docker compose up --build` 仍未在本机实跑**：
+   环境没有 docker/podman/nerdctl 与 `/var/run/docker.sock`，也无 root；
+   只做了 Compose YAML 解析、Dockerfile 核对，并用等价的
+   uvicorn 单 worker 命令实跑验证。Dockerfile 仍只依赖
+   `python:3.11-slim` + `pip install -r requirements.txt`，主要外部风险是
+   拉基础镜像/PyPI 网络。
+2. **未与真实边界路由器/RTR 实现做互操作测试**（环境无 BIRD/FRR/
+   Routinator/StayRTR 等，也无法用容器）。已按 RFC 8210 逐字节核对并用
+   自研客户端/测试闭环；真实厂商实现的版本协商、TCP MD5/AO、异常 PDU
+   容忍度仍建议在测试网验证。
+3. **只讲 RTR v1，不做版本协商降级**：收到非 v1 PDU 回
+   Unsupported Protocol Version(4) 的 Error Report 后关闭；没有实现 RFC
+   的多版本探测/降级状态机，也未实现 v2/ASPA/BGPsec Router Key PDU。
+4. **按需求不做增量 delta**：任何非精确 Serial Query 都 Cache Reset；
+   超大表 + 大量路由器频繁落后时会重复整表传输（当前演示/内网规模无碍，
+   生产大规模可再做序列号窗口与增量）。
+5. **RTR 无认证/加密**：明文 TCP，未实现 RFC 8210 的 SSH/TLS 传输或
+   TCP MD5；Compose 端口默认对所有映射网卡开放，仅适合可信网管内网。
+6. **session_id/serial 仍是内存态**：进程重启后重新随机 session、serial
+   从 0 开始；路由器会因 session 不符自动 Cache Reset 全量重取，语义正确，
+   但 serial 不跨重启单调。持久化 serial/session 未做（与既有“内存单例、
+   重启回种子”限制一致）。
+7. **连接数/限速/慢连接资源上限较轻**：线程-per-连接，未加最大连接数、
+   读超时截断（仅 0.2s 轮询，慢速分片请求可长期占用一个线程）与出口队列；
+   应对可信内网少量边界路由器足够，暴露到公网前需要加限制。
+8. 既有第一、三节中的其他限制（无持久化候选/路由、单 worker、无 HTTP
+   鉴权/CORS `*`、仅 IPv4 等）维持不变。
+9. 改动均在工作区，**未执行 git commit**（未要求提交）。

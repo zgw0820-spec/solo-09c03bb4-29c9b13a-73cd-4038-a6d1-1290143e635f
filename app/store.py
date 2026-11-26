@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import os
+import random
 import threading
 import uuid
 from dataclasses import dataclass, field
@@ -24,6 +25,7 @@ from .rpki import (
     evaluate_route,
     table_fingerprint,
 )
+from .rtr import RTR_SERIAL_INITIAL, RtrSnapshot
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_SEED_PATH = Path(
@@ -33,6 +35,27 @@ DEFAULT_SEED_PATH = Path(
 
 def utc_now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+def sorted_unique_records(records: list[RoaRecord] | tuple[RoaRecord, ...]) -> tuple[RoaRecord, ...]:
+    """De-duplicate identical authorizations and order them canonically.
+
+    The result is the stable wire order used for RTR IPv4 Prefix PDUs and is
+    replaced atomically on every table switch, so an RTR response can iterate
+    one immutable tuple without holding the store lock.
+    """
+    unique = {record.canonical_tuple(): record for record in records}
+    return tuple(
+        sorted(
+            unique.values(),
+            key=lambda r: (
+                r.prefix.network_address.packed,
+                r.prefix.prefixlen,
+                r.max_length,
+                r.origin_asn,
+            ),
+        )
+    )
 
 
 class StoreConflict(Exception):
@@ -121,6 +144,12 @@ class Store:
         self.active_records: list[RoaRecord] = records
         self.active_fingerprint: str = table_fingerprint(records)
         self.activated_at: str = utc_now_iso()
+        # RFC 8210 RTR state. The session id identifies this process's
+        # incarnation of the cache; the serial starts at RTR_SERIAL_INITIAL
+        # and advances strictly when an enable changes the record *set*.
+        self.rtr_session_id: int = random.randint(1, 0xFFFF)
+        self.rtr_serial: int = RTR_SERIAL_INITIAL
+        self.active_rtr_entries: tuple[RoaRecord, ...] = sorted_unique_records(records)
 
     def reset(self, seed_table: dict) -> None:
         """Restore the freshly seeded state (used by tests)."""
@@ -139,8 +168,34 @@ class Store:
                 "fingerprint": self.active_fingerprint,
                 "record_count": len(self.active_records),
                 "activated_at": self.activated_at,
+                "rtr_session_id": self.rtr_session_id,
+                "rtr_serial": self.rtr_serial,
                 "records": [r.as_dict() for r in self.active_records],
             }
+
+    # ------------------------------------------------------------------ RTR
+
+    def rtr_state(self) -> tuple[int, int]:
+        """Current ``(session_id, serial)``; cheap and lock-consistent."""
+        with self.lock:
+            return self.rtr_session_id, self.rtr_serial
+
+    def rtr_snapshot(self) -> RtrSnapshot:
+        """One immutable table revision for a complete Cache Response.
+
+        The returned entries tuple is shared and never mutated; table switches
+        replace ``active_rtr_entries`` wholesale. An RTR connection therefore
+        sends its whole response from one revision even if enables happen
+        while it is writing to a slow router.
+        """
+        with self.lock:
+            return RtrSnapshot(
+                session_id=self.rtr_session_id,
+                serial=self.rtr_serial,
+                entries=self.active_rtr_entries,
+                active_version=self.active_version,
+                fingerprint=self.active_fingerprint,
+            )
 
     def health(self) -> dict:
         with self.lock:
@@ -160,6 +215,8 @@ class Store:
                 "announced_routes": len(self.routes),
                 "invalid_routes_under_active_table": invalid,
                 "candidates": len(self.candidates),
+                "rtr_session_id": self.rtr_session_id,
+                "rtr_serial": self.rtr_serial,
             }
 
     def list_routes(self, state_filter: Optional[str] = None) -> list[dict]:
@@ -435,6 +492,11 @@ class Store:
                     "active_version": self.active_version,
                     "active_fingerprint": self.active_fingerprint,
                     "activated_at": self.activated_at,
+                    "rtr": {
+                        "session_id": self.rtr_session_id,
+                        "serial": self.rtr_serial,
+                        "serial_advanced": False,
+                    },
                 }
 
             if expected_version is not None and expected_version != candidate.version:
@@ -538,13 +600,20 @@ class Store:
                     },
                 )
 
-            # Atomic cut-over.
+            # Atomic cut-over. The RTR serial moves ONLY when the actual
+            # authorization record set (content fingerprint) changes; a pure
+            # version-label re-enable does not produce a new RTR revision.
             previous_version = self.active_version
+            previous_fingerprint = self.active_fingerprint
+            records_changed = candidate.fingerprint != previous_fingerprint
             self.active_records = candidate.records
             self.active_fingerprint = candidate.fingerprint
             self.active_version = candidate.version
             self.active_description = candidate.description
             self.activated_at = utc_now_iso()
+            self.active_rtr_entries = sorted_unique_records(candidate.records)
+            if records_changed:
+                self.rtr_serial = (self.rtr_serial + 1) & 0xFFFFFFFF
             candidate.enabled_at = self.activated_at
             return {
                 "enabled": True,
@@ -556,6 +625,11 @@ class Store:
                 "active_fingerprint": self.active_fingerprint,
                 "activated_at": self.activated_at,
                 "recheck": recheck,
+                "rtr": {
+                    "session_id": self.rtr_session_id,
+                    "serial": self.rtr_serial,
+                    "serial_advanced": records_changed,
+                },
             }
 
 

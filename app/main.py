@@ -16,6 +16,10 @@ Workflow
 
 from __future__ import annotations
 
+import logging
+import os
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -28,14 +32,49 @@ from .models import (
     PutCandidateIn,
     WithdrawalIn,
 )
+from .rtr import DEFAULT_RTR_HOST, DEFAULT_RTR_PORT, RTRServer
 from .store import StoreConflict, store
+
+logger = logging.getLogger("app")
+
+
+def _rtr_enabled() -> bool:
+    return os.getenv("RTR_ENABLED", "1").strip().lower() not in (
+        "0",
+        "false",
+        "no",
+        "off",
+    )
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    rtr_server: RTRServer | None = None
+    if _rtr_enabled():
+        rtr_host = os.getenv("RTR_HOST", DEFAULT_RTR_HOST)
+        rtr_port = int(os.getenv("RTR_PORT", str(DEFAULT_RTR_PORT)))
+        rtr_server = RTRServer(store, rtr_host, rtr_port).start()
+        _app.state.rtr_server = rtr_server
+        logger.info(
+            "RFC 8210 RTR v1 interface available at %s:%d", rtr_host, rtr_server.server_port
+        )
+    else:
+        _app.state.rtr_server = None
+    try:
+        yield
+    finally:
+        if rtr_server is not None:
+            rtr_server.stop()
+
 
 app = FastAPI(
     title="RPKI Cut-over Guard",
     version=__version__,
+    lifespan=lifespan,
     description=(
         "单实例 RPKI 授权表切换守门服务：接收 IPv4 BGP 通告/撤回，"
-        "试算候选授权整表，并在启用时按仍在播路由重核新增 Invalid。"
+        "试算候选授权整表，并在启用时按仍在播路由重核新增 Invalid；"
+        "启用后的 IPv4 起源授权另通过 RFC 8210 RTR v1 TCP 接口供边界路由器读取。"
     ),
 )
 
@@ -71,6 +110,10 @@ def root() -> dict:
             "candidate_detail": "GET /api/candidates/{candidate_id}",
             "retrial": "POST /api/candidates/{candidate_id}/trial",
             "enable": "POST /api/candidates/{candidate_id}/enable",
+            "rtr_tcp": (
+                f"RFC8210 RTRv1 on tcp/{os.getenv('RTR_PORT', str(DEFAULT_RTR_PORT))} "
+                "(Reset Query / Serial Query / Serial Notify)"
+            ),
         },
     }
 

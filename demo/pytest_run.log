@@ -3,25 +3,35 @@ platform linux -- Python 3.11.2, pytest-9.2.0, pluggy-1.7.0 -- /workspace/.venv/
 cachedir: .pytest_cache
 rootdir: /workspace
 plugins: anyio-4.16.0
-collecting ... collected 18 items
+collecting ... collected 28 items
 
-tests/test_service.py::test_health_and_seed_loaded PASSED                [  5%]
-tests/test_service.py::test_route_classification[192.0.2.0/24-65001-valid-None] PASSED [ 11%]
-tests/test_service.py::test_route_classification[192.0.2.128/25-65001-valid-None] PASSED [ 16%]
-tests/test_service.py::test_route_classification[192.0.2.192/26-65001-invalid-max_length_exceeded] PASSED [ 22%]
-tests/test_service.py::test_route_classification[192.0.2.0/24-65099-invalid-origin_as_unauthorized] PASSED [ 27%]
-tests/test_service.py::test_route_classification[198.18.0.0/16-65010-not_found-None] PASSED [ 33%]
-tests/test_service.py::test_asn_string_form_accepted PASSED              [ 38%]
-tests/test_service.py::test_routes_distinguished_by_prefix_and_asn PASSED [ 44%]
-tests/test_service.py::test_withdraw_without_asn_removes_all_origins_of_prefix PASSED [ 50%]
-tests/test_service.py::test_invalid_prefixes_rejected PASSED             [ 55%]
-tests/test_service.py::test_trial_reports_new_invalid_routes PASSED      [ 61%]
-tests/test_service.py::test_new_announcement_after_clean_trial_blocks_enable PASSED [ 66%]
-tests/test_service.py::test_changed_candidate_authorization_requires_retrial PASSED [ 72%]
-tests/test_service.py::test_active_table_changed_since_trial_requires_retrial PASSED [ 77%]
-tests/test_service.py::test_trial_blocker_can_disappear_after_withdrawal_without_retrial PASSED [ 83%]
-tests/test_service.py::test_enable_unknown_candidate_404 PASSED          [ 88%]
-tests/test_service.py::test_post_duplicate_candidate_id_conflicts PASSED [ 94%]
+tests/test_rtr.py::test_reset_query_returns_full_seed_table PASSED       [  3%]
+tests/test_rtr.py::test_serial_query_exact_session_and_serial_is_empty_update PASSED [  7%]
+tests/test_rtr.py::test_serial_query_stale_serial_triggers_cache_reset PASSED [ 10%]
+tests/test_rtr.py::test_serial_query_wrong_session_triggers_cache_reset PASSED [ 14%]
+tests/test_rtr.py::test_idle_connection_receives_serial_notify_after_content_enable PASSED [ 17%]
+tests/test_rtr.py::test_http_enable_drives_rtr_and_notifies PASSED       [ 21%]
+tests/test_rtr.py::test_relabel_only_enable_does_not_advance_serial_or_notify PASSED [ 25%]
+tests/test_rtr.py::test_duplicate_records_do_not_change_the_set PASSED   [ 28%]
+tests/test_rtr.py::test_response_keeps_one_snapshot_and_notify_is_coalesced_to_latest PASSED [ 32%]
+tests/test_rtr.py::test_slow_connection_does_not_block_enables_or_others_and_gets_one_latest_notify PASSED [ 35%]
+tests/test_service.py::test_health_and_seed_loaded PASSED                [ 39%]
+tests/test_service.py::test_route_classification[192.0.2.0/24-65001-valid-None] PASSED [ 42%]
+tests/test_service.py::test_route_classification[192.0.2.128/25-65001-valid-None] PASSED [ 46%]
+tests/test_service.py::test_route_classification[192.0.2.192/26-65001-invalid-max_length_exceeded] PASSED [ 50%]
+tests/test_service.py::test_route_classification[192.0.2.0/24-65099-invalid-origin_as_unauthorized] PASSED [ 53%]
+tests/test_service.py::test_route_classification[198.18.0.0/16-65010-not_found-None] PASSED [ 57%]
+tests/test_service.py::test_asn_string_form_accepted PASSED              [ 60%]
+tests/test_service.py::test_routes_distinguished_by_prefix_and_asn PASSED [ 64%]
+tests/test_service.py::test_withdraw_without_asn_removes_all_origins_of_prefix PASSED [ 67%]
+tests/test_service.py::test_invalid_prefixes_rejected PASSED             [ 71%]
+tests/test_service.py::test_trial_reports_new_invalid_routes PASSED      [ 75%]
+tests/test_service.py::test_new_announcement_after_clean_trial_blocks_enable PASSED [ 78%]
+tests/test_service.py::test_changed_candidate_authorization_requires_retrial PASSED [ 82%]
+tests/test_service.py::test_active_table_changed_since_trial_requires_retrial PASSED [ 85%]
+tests/test_service.py::test_trial_blocker_can_disappear_after_withdrawal_without_retrial PASSED [ 89%]
+tests/test_service.py::test_enable_unknown_candidate_404 PASSED          [ 92%]
+tests/test_service.py::test_post_duplicate_candidate_id_conflicts PASSED [ 96%]
 tests/test_service.py::test_enable_without_trial_for_freshly_posted_candidate_uses_latest PASSED [100%]
 
 =============================== warnings summary ===============================
@@ -30,4 +40,4 @@ tests/test_service.py::test_enable_without_trial_for_freshly_posted_candidate_us
     from starlette.testclient import TestClient as TestClient  # noqa
 
 -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
-======================== 18 passed, 1 warning in 0.97s =========================
+======================== 28 passed, 1 warning in 7.58s =========================

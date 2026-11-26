@@ -8,12 +8,14 @@
 <<< HTTP 200
   {
     "status": "ok",
-    "time": "2026-11-26T16:27:34.124518+00:00",
+    "time": "2026-11-26T17:24:40.216663+00:00",
     "active_version": "2026-11-26-active-1",
     "active_fingerprint": "sha256:0c53551b3ff4b795",
     "announced_routes": 0,
     "invalid_routes_under_active_table": 0,
-    "candidates": 0
+    "candidates": 0,
+    "rtr_session_id": 5731,
+    "rtr_serial": 0
   }
 
 ----------------------------------------------------------------------
@@ -24,7 +26,9 @@
     "description": "预置生效表：旧 RPKI 验证器已核验的 IPv4 授权记录（演示数据，使用 RFC5737/2544 文档网段）",
     "fingerprint": "sha256:0c53551b3ff4b795",
     "record_count": 3,
-    "activated_at": "2026-11-26T16:27:31.244205+00:00",
+    "activated_at": "2026-11-26T17:24:33.144877+00:00",
+    "rtr_session_id": 5731,
+    "rtr_serial": 0,
     "records": [
       {
         "prefix": "192.0.2.0/24",
@@ -60,14 +64,14 @@
 <<< HTTP 200
   {
     "accepted": true,
-    "received_at": "2026-11-26T16:27:34.268100+00:00",
+    "received_at": "2026-11-26T17:24:40.363845+00:00",
     "active_version": "2026-11-26-active-1",
     "active_fingerprint": "sha256:0c53551b3ff4b795",
     "route": {
       "prefix": "192.0.2.0/24",
       "origin_asn": 65001,
-      "first_seen_at": "2026-11-26T16:27:34.268100+00:00",
-      "last_seen_at": "2026-11-26T16:27:34.268100+00:00",
+      "first_seen_at": "2026-11-26T17:24:40.363845+00:00",
+      "last_seen_at": "2026-11-26T17:24:40.363845+00:00",
       "announcement_count": 1,
       "last_collector": "collector-a",
       "last_peer": "198.51.100.1"
@@ -98,14 +102,14 @@
 <<< HTTP 200
   {
     "accepted": true,
-    "received_at": "2026-11-26T16:27:34.341042+00:00",
+    "received_at": "2026-11-26T17:24:40.441917+00:00",
     "active_version": "2026-11-26-active-1",
     "active_fingerprint": "sha256:0c53551b3ff4b795",
     "route": {
       "prefix": "192.0.2.128/25",
       "origin_asn": 65001,
-      "first_seen_at": "2026-11-26T16:27:34.341042+00:00",
-      "last_seen_at": "2026-11-26T16:27:34.341042+00:00",
+      "first_seen_at": "2026-11-26T17:24:40.441917+00:00",
+      "last_seen_at": "2026-11-26T17:24:40.441917+00:00",
       "announcement_count": 1,
       "last_collector": "collector-a",
       "last_peer": null
@@ -136,14 +140,14 @@
 <<< HTTP 200
   {
     "accepted": true,
-    "received_at": "2026-11-26T16:27:34.418088+00:00",
+    "received_at": "2026-11-26T17:24:40.531428+00:00",
     "active_version": "2026-11-26-active-1",
     "active_fingerprint": "sha256:0c53551b3ff4b795",
     "route": {
       "prefix": "198.51.100.128/25",
       "origin_asn": 65002,
-      "first_seen_at": "2026-11-26T16:27:34.418088+00:00",
-      "last_seen_at": "2026-11-26T16:27:34.418088+00:00",
+      "first_seen_at": "2026-11-26T17:24:40.531428+00:00",
+      "last_seen_at": "2026-11-26T17:24:40.531428+00:00",
       "announcement_count": 1,
       "last_collector": "collector-b",
       "last_peer": null
@@ -173,14 +177,14 @@
 <<< HTTP 200
   {
     "accepted": true,
-    "received_at": "2026-11-26T16:27:34.493963+00:00",
+    "received_at": "2026-11-26T17:24:40.641839+00:00",
     "active_version": "2026-11-26-active-1",
     "active_fingerprint": "sha256:0c53551b3ff4b795",
     "route": {
       "prefix": "203.0.113.0/24",
       "origin_asn": 65003,
-      "first_seen_at": "2026-11-26T16:27:34.493963+00:00",
-      "last_seen_at": "2026-11-26T16:27:34.493963+00:00",
+      "first_seen_at": "2026-11-26T17:24:40.641839+00:00",
+      "last_seen_at": "2026-11-26T17:24:40.641839+00:00",
       "announcement_count": 1,
       "last_collector": null,
       "last_peer": null
@@ -210,14 +214,14 @@
 <<< HTTP 200
   {
     "accepted": true,
-    "received_at": "2026-11-26T16:27:34.570884+00:00",
+    "received_at": "2026-11-26T17:24:40.760496+00:00",
     "active_version": "2026-11-26-active-1",
     "active_fingerprint": "sha256:0c53551b3ff4b795",
     "route": {
       "prefix": "198.18.0.0/16",
       "origin_asn": 65010,
-      "first_seen_at": "2026-11-26T16:27:34.570884+00:00",
-      "last_seen_at": "2026-11-26T16:27:34.570884+00:00",
+      "first_seen_at": "2026-11-26T17:24:40.760496+00:00",
+      "last_seen_at": "2026-11-26T17:24:40.760496+00:00",
       "announcement_count": 1,
       "last_collector": null,
       "last_peer": null
@@ -271,15 +275,15 @@
       "description": "新验证器导出的候选表（草案：198.18/16 maxLength=16）",
       "fingerprint": "sha256:dbd27df3c440d1bb",
       "record_count": 4,
-      "created_at": "2026-11-26T16:27:34.655078+00:00",
-      "updated_at": "2026-11-26T16:27:34.655078+00:00",
-      "latest_trial_id": "trial-ee49c4ff2b37",
+      "created_at": "2026-11-26T17:24:40.870646+00:00",
+      "updated_at": "2026-11-26T17:24:40.870646+00:00",
+      "latest_trial_id": "trial-3bdc9de0a100",
       "enabled_at": null
     },
     "trial": {
-      "trial_id": "trial-ee49c4ff2b37",
+      "trial_id": "trial-3bdc9de0a100",
       "candidate_id": "cutover",
-      "created_at": "2026-11-26T16:27:34.655406+00:00",
+      "created_at": "2026-11-26T17:24:40.871322+00:00",
       "authorization_version": "2026-11-26-v2-rc1",
       "authorization_fingerprint": "sha256:dbd27df3c440d1bb",
       "active_version_at_trial": "2026-11-26-active-1",
@@ -301,7 +305,7 @@
       }
     }
   }
-    [captured] TRIAL_RC1=trial-ee49c4ff2b37
+    [captured] TRIAL_RC1=trial-3bdc9de0a100
 
 ======================================================================
  3. 同一候选更新为 rc2 整表（maxLength 调整为 24），自动试算：无新增 Invalid
@@ -345,15 +349,15 @@
       "description": "新验证器导出的候选表（终稿：198.18/16 maxLength=24）",
       "fingerprint": "sha256:7c766f8898d09791",
       "record_count": 4,
-      "created_at": "2026-11-26T16:27:34.655078+00:00",
-      "updated_at": "2026-11-26T16:27:34.787454+00:00",
-      "latest_trial_id": "trial-696b056aa2f5",
+      "created_at": "2026-11-26T17:24:40.870646+00:00",
+      "updated_at": "2026-11-26T17:24:41.013674+00:00",
+      "latest_trial_id": "trial-056b277bfe69",
       "enabled_at": null
     },
     "trial": {
-      "trial_id": "trial-696b056aa2f5",
+      "trial_id": "trial-056b277bfe69",
       "candidate_id": "cutover",
-      "created_at": "2026-11-26T16:27:34.788361+00:00",
+      "created_at": "2026-11-26T17:24:41.014361+00:00",
       "authorization_version": "2026-11-26-v2",
       "authorization_fingerprint": "sha256:7c766f8898d09791",
       "active_version_at_trial": "2026-11-26-active-1",
@@ -375,7 +379,7 @@
       }
     }
   }
-    [captured] TRIAL_RC2=trial-696b056aa2f5
+    [captured] TRIAL_RC2=trial-056b277bfe69
     trial.new_invalid_count = 0
 
 ======================================================================
@@ -386,7 +390,7 @@
 >>> POST /api/candidates/cutover/enable
     request body:
       {
-        "trial_id": "trial-ee49c4ff2b37"
+        "trial_id": "trial-3bdc9de0a100"
       }
 <<< HTTP 409
   {
@@ -394,7 +398,7 @@
       "code": "RETRIAL_REQUIRED",
       "message": "试算所用授权表已变更（version/records），请重新试算后再启用",
       "candidate_id": "cutover",
-      "trial_id": "trial-ee49c4ff2b37",
+      "trial_id": "trial-3bdc9de0a100",
       "reason": "candidate_authorization_changed",
       "changed_fields": [
         "version",
@@ -415,9 +419,9 @@
 >>> POST /api/candidates/cutover/trial
 <<< HTTP 200
   {
-    "trial_id": "trial-c3916733e644",
+    "trial_id": "trial-bd6f7b9b9a29",
     "candidate_id": "cutover",
-    "created_at": "2026-11-26T16:27:35.034466+00:00",
+    "created_at": "2026-11-26T17:24:41.241324+00:00",
     "authorization_version": "2026-11-26-v2",
     "authorization_fingerprint": "sha256:7c766f8898d09791",
     "active_version_at_trial": "2026-11-26-active-1",
@@ -438,7 +442,7 @@
       }
     }
   }
-    [captured] TRIAL_FRESH=trial-c3916733e644
+    [captured] TRIAL_FRESH=trial-bd6f7b9b9a29
 
 ======================================================================
  6. 试算后新到两条通告：旧生效表无覆盖 -> 回执均为 not_found（照常放行）
@@ -456,14 +460,14 @@
 <<< HTTP 200
   {
     "accepted": true,
-    "received_at": "2026-11-26T16:27:35.172257+00:00",
+    "received_at": "2026-11-26T17:24:41.362980+00:00",
     "active_version": "2026-11-26-active-1",
     "active_fingerprint": "sha256:0c53551b3ff4b795",
     "route": {
       "prefix": "198.18.1.0/24",
       "origin_asn": 65099,
-      "first_seen_at": "2026-11-26T16:27:35.172257+00:00",
-      "last_seen_at": "2026-11-26T16:27:35.172257+00:00",
+      "first_seen_at": "2026-11-26T17:24:41.362980+00:00",
+      "last_seen_at": "2026-11-26T17:24:41.362980+00:00",
       "announcement_count": 1,
       "last_collector": "collector-c",
       "last_peer": "198.51.100.9"
@@ -486,14 +490,14 @@
 <<< HTTP 200
   {
     "accepted": true,
-    "received_at": "2026-11-26T16:27:35.262325+00:00",
+    "received_at": "2026-11-26T17:24:41.447428+00:00",
     "active_version": "2026-11-26-active-1",
     "active_fingerprint": "sha256:0c53551b3ff4b795",
     "route": {
       "prefix": "198.18.0.0/25",
       "origin_asn": 65010,
-      "first_seen_at": "2026-11-26T16:27:35.262325+00:00",
-      "last_seen_at": "2026-11-26T16:27:35.262325+00:00",
+      "first_seen_at": "2026-11-26T17:24:41.447428+00:00",
+      "last_seen_at": "2026-11-26T17:24:41.447428+00:00",
       "announcement_count": 1,
       "last_collector": "collector-c",
       "last_peer": null
@@ -513,7 +517,7 @@
 >>> POST /api/candidates/cutover/enable
     request body:
       {
-        "trial_id": "trial-c3916733e644"
+        "trial_id": "trial-bd6f7b9b9a29"
       }
 <<< HTTP 409
   {
@@ -521,11 +525,11 @@
       "code": "ENABLE_BLOCKED",
       "message": "启用重核发现 2 条将新增为 Invalid 的在播路由，已保留原生效表；请撤回相关路由或修订候选表",
       "candidate_id": "cutover",
-      "trial_id": "trial-c3916733e644",
+      "trial_id": "trial-bd6f7b9b9a29",
       "active_version": "2026-11-26-active-1",
       "active_fingerprint": "sha256:0c53551b3ff4b795",
       "recheck": {
-        "checked_at": "2026-11-26T16:27:35.367837+00:00",
+        "checked_at": "2026-11-26T17:24:41.529261+00:00",
         "routes_checked": 7,
         "new_invalid_count": 2
       },
@@ -545,8 +549,8 @@
               "length_ok": false
             }
           ],
-          "first_seen_at": "2026-11-26T16:27:35.262325+00:00",
-          "last_seen_at": "2026-11-26T16:27:35.262325+00:00",
+          "first_seen_at": "2026-11-26T17:24:41.447428+00:00",
+          "last_seen_at": "2026-11-26T17:24:41.447428+00:00",
           "collector": "collector-c"
         },
         {
@@ -564,8 +568,8 @@
               "length_ok": true
             }
           ],
-          "first_seen_at": "2026-11-26T16:27:35.172257+00:00",
-          "last_seen_at": "2026-11-26T16:27:35.172257+00:00",
+          "first_seen_at": "2026-11-26T17:24:41.362980+00:00",
+          "last_seen_at": "2026-11-26T17:24:41.362980+00:00",
           "collector": "collector-c"
         }
       ]
@@ -581,12 +585,14 @@
 <<< HTTP 200
   {
     "status": "ok",
-    "time": "2026-11-26T16:27:35.426630+00:00",
+    "time": "2026-11-26T17:24:41.587929+00:00",
     "active_version": "2026-11-26-active-1",
     "active_fingerprint": "sha256:0c53551b3ff4b795",
     "announced_routes": 7,
     "invalid_routes_under_active_table": 0,
-    "candidates": 1
+    "candidates": 1,
+    "rtr_session_id": 5731,
+    "rtr_serial": 0
   }
 
 ----------------------------------------------------------------------
@@ -599,8 +605,8 @@
       {
         "prefix": "198.18.0.0/16",
         "origin_asn": 65010,
-        "first_seen_at": "2026-11-26T16:27:34.570884+00:00",
-        "last_seen_at": "2026-11-26T16:27:34.570884+00:00",
+        "first_seen_at": "2026-11-26T17:24:40.760496+00:00",
+        "last_seen_at": "2026-11-26T17:24:40.760496+00:00",
         "announcement_count": 1,
         "last_collector": null,
         "last_peer": null,
@@ -613,8 +619,8 @@
       {
         "prefix": "198.18.0.0/25",
         "origin_asn": 65010,
-        "first_seen_at": "2026-11-26T16:27:35.262325+00:00",
-        "last_seen_at": "2026-11-26T16:27:35.262325+00:00",
+        "first_seen_at": "2026-11-26T17:24:41.447428+00:00",
+        "last_seen_at": "2026-11-26T17:24:41.447428+00:00",
         "announcement_count": 1,
         "last_collector": "collector-c",
         "last_peer": null,
@@ -627,8 +633,8 @@
       {
         "prefix": "198.18.1.0/24",
         "origin_asn": 65099,
-        "first_seen_at": "2026-11-26T16:27:35.172257+00:00",
-        "last_seen_at": "2026-11-26T16:27:35.172257+00:00",
+        "first_seen_at": "2026-11-26T17:24:41.362980+00:00",
+        "last_seen_at": "2026-11-26T17:24:41.362980+00:00",
         "announcement_count": 1,
         "last_collector": "collector-c",
         "last_peer": "198.51.100.9",
@@ -662,8 +668,8 @@
       {
         "prefix": "198.18.1.0/24",
         "origin_asn": 65099,
-        "first_seen_at": "2026-11-26T16:27:35.172257+00:00",
-        "last_seen_at": "2026-11-26T16:27:35.172257+00:00",
+        "first_seen_at": "2026-11-26T17:24:41.362980+00:00",
+        "last_seen_at": "2026-11-26T17:24:41.362980+00:00",
         "announcement_count": 1,
         "last_collector": "collector-c",
         "last_peer": "198.51.100.9",
@@ -676,7 +682,7 @@
       }
     ],
     "active_version": "2026-11-26-active-1",
-    "processed_at": "2026-11-26T16:27:35.583354+00:00"
+    "processed_at": "2026-11-26T17:24:41.755977+00:00"
   }
 
 ----------------------------------------------------------------------
@@ -695,8 +701,8 @@
       {
         "prefix": "198.18.0.0/25",
         "origin_asn": 65010,
-        "first_seen_at": "2026-11-26T16:27:35.262325+00:00",
-        "last_seen_at": "2026-11-26T16:27:35.262325+00:00",
+        "first_seen_at": "2026-11-26T17:24:41.447428+00:00",
+        "last_seen_at": "2026-11-26T17:24:41.447428+00:00",
         "announcement_count": 1,
         "last_collector": "collector-c",
         "last_peer": null,
@@ -708,7 +714,7 @@
       }
     ],
     "active_version": "2026-11-26-active-1",
-    "processed_at": "2026-11-26T16:27:35.662692+00:00"
+    "processed_at": "2026-11-26T17:24:41.857434+00:00"
   }
 
 ======================================================================
@@ -719,22 +725,27 @@
 >>> POST /api/candidates/cutover/enable
     request body:
       {
-        "trial_id": "trial-c3916733e644"
+        "trial_id": "trial-bd6f7b9b9a29"
       }
 <<< HTTP 200
   {
     "enabled": true,
     "already_active": false,
     "candidate_id": "cutover",
-    "trial_id": "trial-c3916733e644",
+    "trial_id": "trial-bd6f7b9b9a29",
     "previous_active_version": "2026-11-26-active-1",
     "active_version": "2026-11-26-v2",
     "active_fingerprint": "sha256:7c766f8898d09791",
-    "activated_at": "2026-11-26T16:27:35.758457+00:00",
+    "activated_at": "2026-11-26T17:24:41.964816+00:00",
     "recheck": {
-      "checked_at": "2026-11-26T16:27:35.758443+00:00",
+      "checked_at": "2026-11-26T17:24:41.964797+00:00",
       "routes_checked": 5,
       "new_invalid_count": 0
+    },
+    "rtr": {
+      "session_id": 5731,
+      "serial": 1,
+      "serial_advanced": true
     }
   }
 
@@ -753,14 +764,14 @@
 <<< HTTP 200
   {
     "accepted": true,
-    "received_at": "2026-11-26T16:27:35.854789+00:00",
+    "received_at": "2026-11-26T17:24:42.043932+00:00",
     "active_version": "2026-11-26-v2",
     "active_fingerprint": "sha256:7c766f8898d09791",
     "route": {
       "prefix": "198.18.1.0/24",
       "origin_asn": 65099,
-      "first_seen_at": "2026-11-26T16:27:35.854789+00:00",
-      "last_seen_at": "2026-11-26T16:27:35.854789+00:00",
+      "first_seen_at": "2026-11-26T17:24:42.043932+00:00",
+      "last_seen_at": "2026-11-26T17:24:42.043932+00:00",
       "announcement_count": 1,
       "last_collector": "collector-c",
       "last_peer": null
@@ -789,12 +800,14 @@
 <<< HTTP 200
   {
     "status": "ok",
-    "time": "2026-11-26T16:27:35.901103+00:00",
+    "time": "2026-11-26T17:24:42.122792+00:00",
     "active_version": "2026-11-26-v2",
     "active_fingerprint": "sha256:7c766f8898d09791",
     "announced_routes": 6,
     "invalid_routes_under_active_table": 1,
-    "candidates": 1
+    "candidates": 1,
+    "rtr_session_id": 5731,
+    "rtr_serial": 1
   }
 
 ----------------------------------------------------------------------
@@ -805,7 +818,9 @@
     "description": "新验证器导出的候选表（终稿：198.18/16 maxLength=24）",
     "fingerprint": "sha256:7c766f8898d09791",
     "record_count": 4,
-    "activated_at": "2026-11-26T16:27:35.758457+00:00",
+    "activated_at": "2026-11-26T17:24:41.964816+00:00",
+    "rtr_session_id": 5731,
+    "rtr_serial": 1,
     "records": [
       {
         "prefix": "192.0.2.0/24",

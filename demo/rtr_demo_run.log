@@ -1,0 +1,92 @@
+
+======================================================================
+ 1. 边界路由器启动：RTR Reset Query 取完整生效表
+======================================================================
+<<< Cache Response + 3 IPv4 Prefix PDU(s) + End of Data (session=58945, serial=0) [table update]
+    [A] 192.0.2.0/24       maxLength=25 AS65001
+    [A] 198.51.100.0/24    maxLength=28 AS65002
+    [A] 203.0.113.0/24     maxLength=24 AS65003
+    [captured] session_id=58945 serial=0 prefix_count=3
+
+======================================================================
+ 2. Serial Query(session=58945, serial=0) 与当前一致：空更新
+======================================================================
+{
+  "status": "empty_update",
+  "session_id": 58945,
+  "serial": 0,
+  "prefix_count": 0
+}
+
+======================================================================
+ 3. 网管启用 API：在现表上新增 198.19.1.0/24 AS65088 并启用（serial 应推进）
+======================================================================
+{
+  "enabled": true,
+  "active_version": "rtr-demo-173124-a",
+  "previous_active_version": "2026-11-26-active-1",
+  "rtr": {
+    "session_id": 58945,
+    "serial": 1,
+    "serial_advanced": true
+  }
+}
+
+======================================================================
+ 4. 路由器仍拿旧 serial=0 轮询：序列号不匹配 -> Cache Reset
+======================================================================
+{
+  "status": "cache_reset"
+}
+    rtr_client exit code = 3 (3 denotes Cache Reset)
+    wrong session id likewise -> Cache Reset (verified)
+
+======================================================================
+ 5. 换版后重新 Reset Query：取到包含 198.19.1.0/24 的新表
+======================================================================
+{
+  "status": "end_of_data",
+  "session_id": 58945,
+  "serial": 1,
+  "prefix_count": 4
+}
+    192.0.2.0/24 maxLength=25 AS65001
+    198.19.1.0/24 maxLength=24 AS65088
+    198.51.100.0/24 maxLength=28 AS65002
+    203.0.113.0/24 maxLength=24 AS65003
+
+======================================================================
+ 6. 用新 serial=1 发 Serial Query：空更新
+======================================================================
+{
+  "status": "empty_update",
+  "serial": 1,
+  "prefix_count": 0
+}
+
+======================================================================
+ 7. 常驻 watch 连接 + 第二次启用（198.19.2.0/24）：异步 Serial Notify 后自动重新取表
+======================================================================
+    [enable] second change advanced server serial to 2
+    ---- rtr_client watch output ----
+    <<< Cache Response + 4 IPv4 Prefix PDU(s) + End of Data (session=58945, serial=1) [table update]
+        [A] 192.0.2.0/24       maxLength=25 AS65001
+        [A] 198.19.1.0/24      maxLength=24 AS65088
+        [A] 198.51.100.0/24    maxLength=28 AS65002
+        [A] 203.0.113.0/24     maxLength=24 AS65003
+    --- watching for Serial Notify (Ctrl-C to stop) ---
+    <<< Serial Notify: session=58945 newest serial=2
+    <<< Cache Response + 5 IPv4 Prefix PDU(s) + End of Data (session=58945, serial=2) [table update]
+        [A] 192.0.2.0/24       maxLength=25 AS65001
+        [A] 198.19.1.0/24      maxLength=24 AS65088
+        [A] 198.19.2.0/24      maxLength=24 AS65088
+        [A] 198.51.100.0/24    maxLength=28 AS65002
+        [A] 203.0.113.0/24     maxLength=24 AS65003
+    ---------------------------------
+
+======================================================================
+ ALL RTR DEMO CHECKS PASSED
+======================================================================
+  session=58945  serial: 0 -> 1 -> 2
+  RTR endpoint: 127.0.0.1:8282 (RFC 8210 v1)
+  HTTP API:     http://127.0.0.1:8000/docs

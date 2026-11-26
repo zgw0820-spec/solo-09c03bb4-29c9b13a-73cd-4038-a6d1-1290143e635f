@@ -7,8 +7,13 @@ services:
     init: true
     ports:
       - "8000:8000"
+      # RFC 8210 RTR version 1 TCP interface for border routers.
+      - "8282:8282"
     environment:
       RPKI_SEED_PATH: /app/data/active_table.json
+      RTR_ENABLED: "1"
+      RTR_HOST: "0.0.0.0"
+      RTR_PORT: "8282"
     volumes:
       # Mount your validator-exported effective table here to replace the
       # bundled seed without rebuilding the image.

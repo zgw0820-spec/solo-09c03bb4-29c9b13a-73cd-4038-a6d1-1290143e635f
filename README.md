@@ -10,6 +10,10 @@
 - 启用时校验试算新鲜度，并**始终按启用瞬间仍在播的路由重核**
 - 有新增 Invalid → `409 ENABLE_BLOCKED`，保留原表并列出阻断项；否则原子切表
 - 核对期间通告/撤回照常接收，通告回执按**当时生效的表**判定（带版本号）
+- 启用后的 IPv4 起源授权另通过 **RFC 8210 RTR version 1 TCP 接口**
+  （默认 `tcp/8282`）直接给边界路由器取表：Reset Query 返回整表，
+  Serial Query 精确匹配给空更新、否则 Cache Reset；换版推进序列号并主动
+  发 Serial Notify（详见第 6 节）
 
 ---
 
@@ -17,17 +21,18 @@
 
 ```bash
 docker compose up --build
-# 服务监听 http://127.0.0.1:8000
-# Swagger UI:  http://127.0.0.1:8000/docs
-# 健康检查:    curl http://127.0.0.1:8000/healthz
+# HTTP API:  http://127.0.0.1:8000  (Swagger UI: /docs, 健康检查: /healthz)
+# RTR v1:    tcp://127.0.0.1:8282   (RFC 8210，边界路由器 / scripts/rtr_client.py)
 ```
 
 Compose 会：
 
 - 用仓库内 `Dockerfile` 构建（`uvicorn --workers 1`，内存态要求单 worker）
+- 映射 `8000:8000`（HTTP）与 `8282:8282`（RTR TCP）
 - 把 `./data` 只读挂载到 `/app/data`，可用你从验证器导出的生效表直接替换
   `data/active_table.json`，无需重建镜像（路径由环境变量 `RPKI_SEED_PATH` 指定）
-- 配置容器健康检查
+- 以 `RTR_HOST=0.0.0.0`、`RTR_PORT=8282` 启动 RTR 接口（可用
+  `RTR_ENABLED=0` 关闭），并配置容器 HTTP 健康检查
 
 停止：`docker compose down`。
 
@@ -42,6 +47,8 @@ Compose 会：
 python3 -m venv .venv
 .venv/bin/python -m pip install -r requirements-dev.txt   # 含测试依赖
 .venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000
+# RTR 默认随服务监听 0.0.0.0:8282；本地仅回环可用：
+RTR_HOST=127.0.0.1 .venv/bin/uvicorn app.main:app --port 8000
 ```
 
 另开终端跑端到端 API 演示（建议对**全新启动**的实例运行）：
@@ -51,8 +58,15 @@ bash scripts/demo_requests.sh
 # 或指定地址：bash scripts/demo_requests.sh http://other-host:8000
 ```
 
-演示的完整真实输出已保存在 `demo/demo_run.log`；自动化测试日志在
-`demo/pytest_run.log`。
+RTR 取表/换版重新取表的端到端演示（同样建议全新实例，可重复执行）：
+
+```bash
+bash scripts/demo_rtr.sh
+# 自定义：RTR_HOST=127.0.0.1 RTR_PORT=8282 bash scripts/demo_rtr.sh http://127.0.0.1:8000
+```
+
+演示的完整真实输出已保存在 `demo/demo_run.log` 与 `demo/rtr_demo_run.log`；
+自动化测试日志在 `demo/pytest_run.log`。
 
 运行测试：
 
@@ -200,28 +214,126 @@ curl -sS -X POST $B/api/candidates/cutover/trial | jq -r '.trial_id'
 
 ---
 
-## 6. 设计与并发
+## 6. RTR 接口：边界路由器直接取启用表（RFC 8210 v1）
+
+HTTP 之外，服务在 **TCP 8282** 提供 RTR version 1（RFC 8210）二进制接口，
+只暴露**当前已启用**的 IPv4 起源授权（ROA 三元组）。环境变量：
+
+| 变量 | 默认 | 说明 |
+| --- | --- | --- |
+| `RTR_ENABLED` | `1` | 置 `0/false/no/off` 可关闭 |
+| `RTR_HOST` | `0.0.0.0` | RTR 监听地址（本地可设 `127.0.0.1`） |
+| `RTR_PORT` | `8282` | RTR TCP 端口 |
+
+RTR 状态：进程启动/种子载入时生成一个 16 位 `session_id`，`serial` 从 `0`
+开始；`GET /healthz` 与 `GET /api/active/authorizations` 都带
+`rtr_session_id / rtr_serial`，启用接口的响应带 `rtr` 块。
+
+### 6.1 协议行为（本次范围）
+
+| 路由器请求 | 服务响应 |
+| --- | --- |
+| **Reset Query**（type 2） | `Cache Response`(3) + 每条授权一个 **IPv4 Prefix**(4，20 字节，flags=1 通告) + v1 **End of Data**(7，length=12，带 serial)，即完整生效表 |
+| **Serial Query**（type 1），session 与 serial **都等于当前值** | `Cache Response` + `End of Data`，中间 **0 条 PDU**（空更新） |
+| **Serial Query** 的 session 或 serial 任一不匹配 | 单个 **Cache Reset**(8)，路由器随后 Reset Query 整表重取 |
+| 表内容变化的启用 | serial 加一（32 位回绕），并向空闲连接主动发 **Serial Notify**(0) |
+
+明确**不做增量**：即使只落后一个序列号，Serial Query 也按“不匹配”回
+Cache Reset，由路由器整表重取。
+
+“授权记录集合是否改变”以整表规范化指纹为准：只有指纹变化（真正增删改
+授权三元组）才推进 serial。仅换版本标签、重复启用同一候选、或加入与现有
+完全重复的记录，都**不**推进 serial、不发 Notify。
+
+### 6.2 一致性与慢连接语义
+
+- 每次响应在锁内取一份不可变快照 `RtrSnapshot(session, serial, entries)`，
+  `Cache Response → 全部 IPv4 Prefix → End of Data` 全部来自这同一份表与
+  同一个 serial；发送期间不持有状态锁。
+- 传输途中发生换表时，该连接仍把旧快照完整发到 End of Data；之后在空闲点
+  **至多**补发一个 Serial Notify，且只携带**此刻最新**的 serial（期间连续
+  换多版也合并成一个最新值）。
+- 每条 TCP 连接由独立守护线程负责，启用路径不做任何 socket 写、不等待
+  路由器；慢/卡住的连接只阻塞它自己的线程，不拖住启用、store 锁、accept
+  或其他路由器取表（有专门的小缓冲真实 socket 测试覆盖）。
+
+### 6.3 本地 RTR 客户端与演示
+
+`scripts/rtr_client.py` 仅用 Python 标准库，可直接在宿主机对
+Compose 映射出的 `127.0.0.1:8282` 使用：
+
+```bash
+# 整表重取（Reset Query），加 --json 输出机器可读结果
+python3 scripts/rtr_client.py reset
+python3 scripts/rtr_client.py reset --json
+
+# 精确匹配 -> empty_update；旧 serial / 错 session -> cache_reset(退出码 3)
+python3 scripts/rtr_client.py serial 0 --session 27900
+python3 scripts/rtr_client.py serial 0 --session 27900 --json
+
+# 常驻监听 Serial Notify，收到后自动 Reset Query 重新取表
+python3 scripts/rtr_client.py watch --duration 10 --refetch
+```
+
+一键剧本 `bash scripts/demo_rtr.sh` 会真实走完：初始取表 → 匹配轮询空更新
+→ curl 启用一条新增授权（serial 0→1）→ 旧 serial 轮询收 Cache Reset →
+重新取表看到新授权 → 新 serial 轮询空更新 → watch 连接在第二次启用时收到
+合并后的最新 Serial Notify 并自动重取。实测输出见
+`demo/rtr_demo_run.log`。
+
+对应的“启用 API 请求”（在当前生效表上新增一条并启用，随后 RTR 即可取到）：
+
+```bash
+B=http://127.0.0.1:8000
+# 以当前生效表为底，追加一条授权，整体提交为候选并拿 trial_id
+BODY=$(curl -sS $B/api/active/authorizations | jq '
+  {version:"rtr-demo-1",
+   records:(.records + [{prefix:"198.19.1.0/24",max_length:24,origin_asn:65088}])}')
+TID=$(curl -sS -X PUT $B/api/candidates/rtr-demo \
+        -H 'Content-Type: application/json' -d "$BODY" | jq -r .trial.trial_id)
+# 启用：响应 rtr.serial_advanced=true、rtr.serial 推进；RTR 客户端随后收到 Notify
+curl -sS -X POST $B/api/candidates/rtr-demo/enable \
+  -H 'Content-Type: application/json' -d "{\"trial_id\":\"$TID\"}" | jq .rtr
+```
+
+> 说明：该客户端是教学/排障工具，不是 RTR 守护进程；不会维护本地 VRP
+> 缓存、不会自动重连，也不做 RFC 8210 的版本协商降级（服务端只讲 v1，
+> 对其他版本回 Unsupported Protocol Version 的 Error Report）。
+
+---
+
+## 7. 设计与并发
 
 - `app/rpki.py`：纯函数判定 + 指纹 + 新增 Invalid 差分，无框架依赖
-- `app/store.py`：单例内存状态，`threading.RLock` 串行化所有状态变迁
-- `app/main.py`：薄 FastAPI 路由；同步路由在线程池中运行，锁保证一致性
+- `app/store.py`：单例内存状态，`threading.RLock` 串行化所有状态变迁；
+  RTR 的 `session_id / serial / active_rtr_entries` 与生效表在同一把锁内
+  一起替换，并提供一次性不可变 `rtr_snapshot()`
+- `app/rtr.py`：RFC 8210 v1 编解码 + 线程版 TCP Server（每连接一个守护
+  线程）；响应只依赖快照，慢客户端的 `sendall` 不持锁、不影响启用
+- `app/main.py`：薄 FastAPI 路由；lifespan 中启停 RTR Server；同步路由在
+  线程池中运行，锁保证一致性
 - 切表是锁内的引用替换：通告要么发生在切表前（进重核集合、按旧表判定），
   要么发生在切表后（按新表判定），不存在“判定表”和“生效表”错位的窗口
 - 因此部署必须保持 **单进程 / 单 worker**（Dockerfile 已固定 `--workers 1`）
 
-## 7. 目录结构
+## 8. 目录结构
 
 ```
 app/
-  main.py            # FastAPI 路由与错误处理
+  main.py            # FastAPI 路由、lifespan 启停 RTR、错误处理
   models.py          # Pydantic 入参/校验（IPv4 前缀、ASN、maxLength）
   rpki.py            # ROA 覆盖/Valid/Invalid/NotFound 与差分
-  store.py           # 线程安全单例：生效表、在播路由、候选、trial、启用
+  store.py           # 线程安全单例：生效表、路由、候选、trial、启用、RTR 版本
+  rtr.py             # RFC 8210 RTRv1 PDU 编解码 + TCP Server/连接状态机
 data/active_table.json   # 预置生效表（可挂载替换）
-scripts/demo_requests.sh # 端到端 API 演示剧本
+scripts/demo_requests.sh # 端到端 HTTP API 演示剧本
+scripts/rtr_client.py     # 本地标准库 RTR v1 客户端（reset/serial/watch）
+scripts/demo_rtr.sh       # RTR 取表 + 启用换版 + Cache Reset/Notify 演示
 tests/test_service.py    # 18 个 API/规则测试
-demo/demo_run.log        # 演示真实输出
-demo/pytest_run.log      # 测试真实输出
+tests/test_rtr.py        # 10 个 RTR 协议/一致性/慢连接测试（真实 loopback）
+demo/demo_run.log        # HTTP API 演示真实输出
+demo/rtr_demo_run.log    # RTR 演示真实输出
+demo/pytest_run.log      # 28 passed 的测试日志
 Dockerfile
 docker-compose.yml
 requirements*.txt
